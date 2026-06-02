@@ -1,4 +1,10 @@
 import { errorHandling, telemetryData } from "./utils/middleware";
+import {
+    sanitizeFileName,
+    validateFileSize,
+    validateMimeType,
+    validateIdentifier,
+} from "./utils/validation";
 
 export async function onRequestPost(context) {
     const { request, env } = context;
@@ -17,6 +23,22 @@ export async function onRequestPost(context) {
 
         const fileName = uploadFile.name;
         const fileExtension = fileName.split('.').pop().toLowerCase();
+
+        const typeCheck = validateMimeType(uploadFile.type);
+        if (!typeCheck.valid) {
+            throw new Error(`Unsupported file type: ${uploadFile.type}`);
+        }
+        const sizeCheck = validateFileSize(uploadFile.size);
+        if (!sizeCheck.valid) {
+            throw new Error(`File too large. Maximum size is ${sizeCheck.maxBytes / (1024 * 1024)}MB`);
+        }
+
+        const safeFileName = sanitizeFileName(fileName);
+
+        const rawUserId = formData.get('userId');
+        const rawProjectId = formData.get('projectId');
+        const userIdResult = rawUserId ? validateIdentifier(rawUserId, 'userId') : null;
+        const projectIdResult = rawProjectId ? validateIdentifier(rawProjectId, 'projectId') : null;
 
         const telegramFormData = new FormData();
         telegramFormData.append("chat_id", env.TG_Chat_ID);
@@ -49,14 +71,15 @@ export async function onRequestPost(context) {
             throw new Error('Failed to get file ID');
         }
 
-        // 构建 metadata
         const metadata = {
             TimeStamp: Date.now(),
             ListType: "None",
             Label: "None",
             liked: false,
-            fileName: fileName,
+            fileName: safeFileName,
             fileSize: uploadFile.size,
+            userId: userIdResult?.value || 'public',
+            projectId: projectIdResult?.value || 'default',
         };
 
         try {

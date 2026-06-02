@@ -21,6 +21,8 @@ export async function onRequest(context) {
           liked: value.metadata.liked || false,
           label: value.metadata.Label || 'None',
           listType: value.metadata.ListType || 'None',
+          userId: value.metadata.userId || 'public',
+          projectId: value.metadata.projectId || 'default',
         });
       }
     }
@@ -31,7 +33,9 @@ export async function onRequest(context) {
       ? records.filter(r =>
           r.name.toLowerCase().includes(q.toLowerCase()) ||
           r.key.toLowerCase().includes(q.toLowerCase()) ||
-          (r.label && r.label !== 'None' && r.label.toLowerCase().includes(q.toLowerCase()))
+          (r.label && r.label !== 'None' && r.label.toLowerCase().includes(q.toLowerCase())) ||
+          r.userId.toLowerCase().includes(q.toLowerCase()) ||
+          r.projectId.toLowerCase().includes(q.toLowerCase())
         )
       : records;
 
