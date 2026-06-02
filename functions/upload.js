@@ -49,18 +49,38 @@ export async function onRequestPost(context) {
             throw new Error('Failed to get file ID');
         }
 
-        // 将文件信息保存到 KV 存储
-        if (env.img_url) {
-            await env.img_url.put(`${fileId}.${fileExtension}`, "", {
-                metadata: {
-                    TimeStamp: Date.now(),
-                    ListType: "None",
-                    Label: "None",
-                    liked: false,
-                    fileName: fileName,
-                    fileSize: uploadFile.size,
+        // 构建 metadata
+        const metadata = {
+            TimeStamp: Date.now(),
+            ListType: "None",
+            Label: "None",
+            liked: false,
+            fileName: fileName,
+            fileSize: uploadFile.size,
+        };
+
+        try {
+            if (env.AI && uploadFile.type && uploadFile.type.startsWith('image/')) {
+                const buffer = await uploadFile.arrayBuffer();
+                const imageData = [...new Uint8Array(buffer)];
+
+                const result = await env.AI.run('@cf/microsoft/resnet-50', {
+                    image: imageData
+                });
+
+                if (result && result.length > 0) {
+                    const topLabel = result[0].label;
+                    metadata.Label = topLabel.split(',')[0].trim();
+                    metadata.ListType = "image";
+                    console.log(`✅ AI识别成功: ${metadata.Label} (置信度: ${(result[0].score * 100).toFixed(1)}%)`);
                 }
-            });
+            }
+        } catch (e) {
+            console.error("⚠️ AI识别失败（不影响上传）:", e.message);
+        }
+
+        if (env.img_url) {
+            await env.img_url.put(`${fileId}.${fileExtension}`, "", { metadata });
         }
 
         return new Response(

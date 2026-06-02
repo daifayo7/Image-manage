@@ -30,7 +30,8 @@ export async function onRequest(context) {
     const filtered = q
       ? records.filter(r =>
           r.name.toLowerCase().includes(q.toLowerCase()) ||
-          r.key.toLowerCase().includes(q.toLowerCase())
+          r.key.toLowerCase().includes(q.toLowerCase()) ||
+          (r.label && r.label !== 'None' && r.label.toLowerCase().includes(q.toLowerCase()))
         )
       : records;
 
